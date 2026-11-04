@@ -1,0 +1,404 @@
+URL: https://www.kaggle.com/competitions/filament-segmentation-2026/overview
+
+menu
+Skip to
+content
+
+Create
+
+Home
+
+Competitions
+
+Benchmarks
+
+Arenas
+
+Game Arena
+
+Data Hub
+
+More
+
+​
+Login
+Sign Up
+Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.
+Learn more
+OK, Got it.
+Earth-Space AI Research (ESAIR) Lab · Community Prediction Competition · 11 days to go
+Join Competition
+more_horiz
+Solar Filament Segmentation Challenge 2026
+
+Automatic Segmentation of Solar Filaments using Computer Vision algorithms (with or without fitting) from GONG's H-Alpha Observations
+
+Overview
+Data
+Code
+Models
+Discussion
+Leaderboard
+Rules
+Overview
+
+(See the Announcement section below for updates.)
+
+TASK
+
+Participants are invited to develop algorithms for the automated segmentation of solar filaments. Any computational approach may be employed, including traditional image-processing techniques, machine learning methods, and state-of-the-art deep neural network architectures.
+
+The objective of this challenge is to develop an algorithm---whether novel or existing---that generates accurate segmentation masks for individual solar filaments. For each filament, the predicted mask should capture the complete extent of the filament, including its fine-scale structures, while minimizing the inclusion of non-filament regions. The challenge emphasizes robust and precise delineation of filament morphology across a diverse set of solar observations.
+
+GOAL
+
+(Updated: Aug 7, 2026)
+
+This competition focuses on the pixel-level precision of filament segmentation masks. The primary evaluation criterion is the Dice score, which quantifies the degree of overlap between the predicted and ground-truth segmentation masks (see torchmetrics.segmentation.DiceScore) The primary evaluation criteria is the Panoptic Quality metric (10.1109/CVPR.2019.00963). In addition to segmentation accuracy, the evaluation framework incorporates penalties related to fragmentation and over-merging (e.g., one-to-many and many-to-one correspondences between predicted and ground-truth filament structures), as well as the end-to-end computational efficiency of the proposed method.
+
+Start
+
+4 months ago
+
+Close
+
+11 days to go
+Announcements
+link
+keyboard_arrow_up
+[Oct 23, 2026] After reviewing top 250 teams' submissions, we remain confident that a PQ greater than 3.5 has significant merit for us.
+[Sep 20, 2026] Reminder: The SABID workshop of IEEE BigData Conference is interested in the topic of this challenge. Please consider submitting your reports to this workshop: https://sites.google.com/view/sabid2026/home .
+[Aug 20, 2026] Looking at some submissions, it is clear to us that some participants are spending their time and energy on hacking the system rather tackling the actual problem. We encourage honest participants to continue their work without comparing their scores with others. Any PQ score of greater than 0.35 is of great value to us.
+[Aug 12, 2026] Our leaderboard is now re-scored.
+[Aug 9, 2026] We added a self-evaluation notebook for participants. Please see the "Self Evaluation" section.
+[Aug 7, 2026] We are going to update our evaluation methodology to address the raised issues. The details are explained below. The new scoring metric will be in effect soon; all previous submissions will be updated as well. The exact time the leaderboard is to be updated depends on when Kaggle resets the scoring mechanism.
+Important Dates
+link
+keyboard_arrow_up
+July 10, 2026: Competition is launched. Contestants can start working on the challenge.
+Nov 15, 2026, 11:59 pm CDT: Deadline for contest teams to submit final reports and solutions.
+Nov 30, 2026: The winning teams will be announced.
+Dec 14-17, 2026: (Optional) IEEE BigData conference will take place at Phoenix, AZ. The winners of this BigDataCup competition (as well as all other BigDataCups) will be announced
+Final Submission
+link
+keyboard_arrow_up
+
+(Added: Aug 7, 2026)
+
+When ready, prepare the following items and submit them through this google form. The items are:
+
+A technical report: A 4-page technical report is required. Please use this Overleaf template for your report. More details about the content of this report are provided in the template. The final report should be submitted as a single pdf file.
+Code Repository: A publicly accessible link to a Git-based repository such as GitHub, GitLab, or Bitbucket, is required. The organizing committee should access your source code without requiring additional access permissions or approval. Within this repository, a file named requirements.txt must include all utilized packages and their corresponding versions. Also, a jupyter notebook should illustrate the entire pipeline. The committee should not require any additional file to reproduce the submitted predictions.
+
+For ML/DL models, the model's weights must be stored in the repo, and be loaded in the notebook such that the results can be reproduced without needing to re-train the model.
+
+All participants who wish to be considered for the final evaluation must complete the Google form. Please ensure that all information provided is accurate and complete. Any errors or omissions that prevent the judging committee from accessing the required materials or contacting the participant may result in the submission being deemed ineligible for final evaluation.
+
+Description
+link
+keyboard_arrow_up
+What Are Solar Filaments?
+
+Filaments (as shown below) are dense "clouds" of solar material suspended by magnetic field lines above photospheric neutral lines. The significance of filaments for space weather research lies in the fact that they are at the core of solar eruptions, including Coronal Mass Ejections (CMEs), solar flares, and Solar Energetic Particle (SEP) storms. An Earth-directed CME can cause enormous damage to the electric power grid, disrupt GPS systems, create radiation hazards for passengers and crew on polar flights, and be lethal to astronauts traveling outside the protective bubble provided by the Earth's magnetosphere. This is why solar filaments are a critical event type in space weather research and forecasting operations.
+
+What Is MAGFiLO?
+
+MAGFiLO, short for Manually Annotated GONG Filaments from H-Alpha Observations, is the ground-truth data of filaments' segmentation mask (10.1038/s41597-024-03876-y). It is created for training and evaluation of machine-learning algorithms, and for evaluation of traditional computer-vision algorithms.
+
+The illustration below shows an H-Alpha observation of the Sun, in which solar filaments have been identified by expert human annotators. Although the dataset includes additional annotations, such as bounding boxes, filament spines, and class labels, this competition focuses exclusively on the segmentation masks of solar filaments.
+
+MAGFiLO is the testbed for all participants' models.
+
+See the Data tab for more details.
+
+What Are the Main Challenges?
+
+Although recent advances in object segmentation have led to remarkable performance across many domains, solar filament segmentation remains a challenging task for several reasons:
+
+Fine-scale structures. Accurately capturing fine filament structures, such as barbs, remains difficult. Barbs are thin, thread-like features that extend from the main body of a filament along a characteristic orientation. Their orientation relative to the filament spine carries important information about the filament's underlying magnetic field configuration.
+Background noise and image quality. Distinguishing filament material (dark regions) from background structures and noise is nontrivial. Since the observations used in this competition originate from ground-based observatories, they are affected by various sources of noise and imaging artifacts. Accurately identifying small-scale filament structures while suppressing background noise remains a significant challenge.
+Structural continuity. Existing segmentation algorithms often struggle to identify solar filaments as contiguous physical structures. Instead, they may produce fragmented segmentations or segment clusters of nearby dark regions ("islands"), resulting in incomplete or physically inconsistent representations of the filament morphology.
+Evaluation
+link
+keyboard_arrow_up
+
+(Updated: Aug 7, 2026)
+
+Although participants may use other external data sources, please note that: (1) for inference of ML models, only the H-alpha images provided in the test directory will be used; and (2) the models may not use any other ground-truth metadata for training.
+
+All submissions are judged based on the following rubric:
+
+Quantitative Comparison (70%):
+Mean Dice score (using torchmetrics.segmentation.DiceScore) Panoptic Quality metric (see the Leaderboard Ranking section below for more details.)
+Distribution of Dice scores
+Distribution of IoU scores
+Distribution of one-to-many and many-to-one relations between the ground-truth and predicted segmentations.
+Qualitative Comparison (30%):
+Detailed description of the entire pipeline (from preprocessing to final prediction, including the architecture of the utilized algorithm).
+The apparent morphology of predicted segmentations on H-Alpha images.
+The quality of code (modularity and documentation)
+
+Note: The evaluation of the above criteria is contingent upon the availability of the source code. Please refer to the Open-Access Policy section below.
+
+Self Evaluation
+link
+keyboard_arrow_up
+
+(Added: Aug 7, 2026)
+
+A self-evaluation notebook containing a few scores and plots is now available. Participants can use this notebook to have a better understanding of the effectiveness of their segmentation algorithms.
+
+Notebook: https://www.kaggle.com/code/azimahmadzadeh/self-evaluation-notebook
+Leaderboard Ranking
+link
+keyboard_arrow_up
+
+(Added: Aug 7, 2026)
+
+The ranking on the leaderboard is one of the considerations in our evaluation (see above rubric.)
+
+The submissions will be evaluated against the ground-truth data (MAGFiLO) using the Panoptic Quality metric which is defined as follows:
+
+PQ
+(
+𝑌
+,
+𝑌
+^
+)
+=
+∑
+(
+𝑦
+,
+𝑦
+^
+)
+∈
+𝑇
+𝑃
+IoU
+(
+𝑦
+,
+𝑦
+^
+)
+|
+𝑇
+𝑃
+|
++
+0.5
+|
+𝐹
+𝑃
+|
++
+0.5
+|
+𝐹
+𝑁
+|
+
+where
+
+Y is a set of all ground-truth segments y,
+Y-hat is a set of all predicted segments y-hat,
+IoU computes the Intersection-over-Union as shown below,
+TP, FP, and FN denote sets of all true-positive, false-positive, and false-negative cases, respectively, and
+|.| is the set cardinality operation.
+
+Intersection-over-Union is measured as follows:
+
+IoU
+(
+𝑦
+,
+𝑦
+^
+)
+=
+IoU
+(
+𝑦
+,
+𝑦
+^
+)
+=
+∩
+(
+𝑦
+,
+𝑦
+^
+)
+∪
+(
+𝑦
+,
+𝑦
+^
+)
+=
+∑
+(
+𝑦
+⊙
+𝑦
+^
+)
+∑
+(
+𝑦
+⊕
+𝑦
+^
+⊖
+𝑦
+⊙
+𝑦
+^
+)
+
+For more information about Panoptic Quality metric, see the original paper (10.1109/CVPR.2019.00963).
+
+Note: There are further verification strategies addressing certain edge cases. Appropriate messages will be shown after a submission is uploaded, when/if such cases are identified.
+
+Submission File
+link
+keyboard_arrow_up
+
+We expect the participants to upload a single CSV file for the entire test set, where each row corresponds to one predicted filament, as shown below.
+
+filament_id        | segmentation_rle   |
+-------------------|--------------------|
+20150125172714Mh_1 | "f8uSDds ... VQNC" |
+20150125172714Mh_2 | "KHT%$HD ... 9>km" |
+20150125172714Mh_3 | "YQNEgn1 ... BH6^" |
+...                | ...                |
+20170501024112Bh_1 | "HBy4d6D ... 97*D" | 
+
+Column filament_id contains unique ids for each filament, e.g., 20150125172714Mh_2.
+Column segmentation_rle contains RLE counts each encoding the mask corresponding to one filament, e.g., ^Vj02jo16I5O2O1`PNA]o1c0N19G1N11O3L01O4JYamT3. Do not include quotations (' or ").
+
+Note: You only need to store RLE Counts; no need to store RLE Size. The Size is fixed for all images: 2048 X 2048 pixels.
+
+To convert your output (e.g., masks, polygons, etc.) to the expected format (RLE Counts), please use the pycocotools Python package, specifically, the methods annToMask, decodeMask, and encodeMask. For more details, see coco.py.
+
+Note: The tail strings in the filament_id column (e.g., _2) is only to make the rows unique. For example, if your algorithm identifies 3 filaments in a given image with id 20150125172714Mh, your should generate 3 rows with the following keys: 20150125172714Mh_1, 20150125172714Mh_2, and 20150125172714Mh_3. As long as the tail strings render the rows unique , and the image id remains unchanged, your filament id is acceptable.
+Note: The number of ground-truth segmentations may also be different from the number of predicted ones. So, the evaluation method matches the predicted and ground-truth segmentations based on their actual overlap, not their index.
+
+The scoreboard will show to the contestants the mean Dice score for ~50% of images in the test set. The results on the remaining images will be only visible to the organizers of the competition. For a fair evaluation pipeline, the two scores should be fairly close.
+
+Prizes
+link
+keyboard_arrow_up
+
+All submissions will be evaluated according to the criteria described above. The organizing committee will review the submitted solutions and determine scores for the top-3 teams. Awards will be granted across the first-, second-, and third-place categories. A total prize pool of up-to $3,000 will be distributed among the winning teams, proportional to their scores which is assigned based on the Evaluation rubric).
+
+The winners of this competition will be announced in the IEEE BigData 2026 in December 14-17, 2026 at Phoenix, AZ.
+
+The exact prize calculation method is shown below:
+
+def compute_prizes(scores, total_prize=3000, temperature=2.0):
+    scores = np.asarray(scores, dtype=float)
+    weights = np.power(scores, temperature)
+    weights = weights / np.sum(weights)
+    prizes = total_prize * weights
+
+    return prizes
+
+
+Upon determining the winners and their exact prizes, AURA/NSO will contact the winners requesting bank information.
+
+Note: Prizes will be split equally among all verified team members listed on the winning submission.
+
+Requirements:
+Banking Info Requirement. All prize recipients must provide valid banking and payment information to AURA and complete any required vendor onboarding process in accordance with AURA policies. Prize payments will be issued by AURA/NSO via direct bank transfer. Prize disbursement is contingent upon the recipient being able to receive payments from U.S. financial institutions. Failure to complete the required vendor setup or provide valid payment information will result in forfeiture of the prize.
+Source Code Release Requirement. Acceptance of a prize is contingent upon the winning teams providing the organizing committee with the complete source code, scripts, configuration files, and any other materials necessary to reproduce the submitted results. The submitted code must successfully reproduce the competition results using the instructions provided by the team.
+
+By accepting a prize, the winning team grants the organizers a perpetual, worldwide, non-exclusive, royalty-free license to use, execute, reproduce, modify, and analyze the submitted code for research, educational, benchmarking, and archival purposes. This includes, but is not limited to, reproducing the reported results, evaluating and comparing submitted methods, and preparing scientific publications (e.g., survey or benchmark papers) describing the competition and the approaches submitted. The organizers will provide appropriate attribution to the authors when the submitted methods or code are discussed or referenced in such publications.
+
+Technical Report Requirement. Acceptance of a prize is contingent upon the winning team submitting a concise technical report describing its solution. The report must document the complete data processing pipeline, including data preprocessing, feature engineering (if applicable), model architecture, training procedure, post-processing steps, and any other components necessary to understand and reproduce the submitted results. The report should be sufficiently detailed to enable the organizing committee to evaluate the methodology and independently reproduce the reported performance.
+
+Note: The organizing committee will not claim authorship of, or take credit for, any submitted code or methods. All intellectual contributions will remain attributed to their original authors, and appropriate credit will be given in any resulting publications or other uses of the submitted materials.
+
+Open-Access Policy
+link
+keyboard_arrow_up
+
+All participants wishing to be considered for the final evaluation must maintain a Git repository containing the source code of their solution. The repository must be made publicly accessible immediately upon the close of the competition and must remain publicly accessible at least until when the winners are announced. Please refer to the competition end date and time for the submission deadline.
+
+The quality of the submitted code—including its modularity, reproducibility, and documentation—will be considered as part of the final evaluation and may affect a team's overall score. Please refer to the Evaluation section for additional details.
+
+Organizers
+link
+keyboard_arrow_up
+Azim Ahmadzadeh, Ph.D., University of Missouri–St. Louis (www.azim-a.com/)
+Dustin J. Kempton, Ph.D., Georgia State University
+Qin Li, Ph.D., New Jersey Institute of Technology
+Alexei A. Pevtsov, Ph.D., National Solar Observatory
+Sponsor
+link
+keyboard_arrow_up
+
+This competition is sponsored by the U.S. National Science Foundation (NSF) National Solar Observatory (NSO). The NSO is the United States' national center for ground-based solar physics and advances research, education, and public outreach in solar science. The NSO is operated by the Association of Universities for Research in Astronomy (AURA) under a cooperative agreement with the NSF Division of Astronomical Sciences.
+
+For more information about the National Solar Observatory, please visit www.nso.edu.
+
+The organization of the Filament Segmentation Challenge 2026 is partially supported by the U.S. National Science Foundation (NSF) under Grant No. 2209912 and 2433781, directorate for Computer and Information Science and Engineering (CSE), and Office of Advanced Cyberinfrastructure (OAC), and Grant No. 2511630, AST Division Of Astronomical Sciences and MPS Directorate for Mathematical and Physical Sciences.
+
+Acknowledgment
+link
+keyboard_arrow_up
+
+This work utilizes GONG data obtained by the NSO Integrated Synoptic Program, managed by the National Solar Observatory, which is operated by the Association of Universities for Research in Astronomy (AURA), Inc. under a cooperative agreement with the National Science Foundation and with contribution from the National Oceanic and Atmospheric Administration. The GONG network of instruments is hosted by the Big Bear Solar Observatory, High Altitude Observatory, Learmonth Solar Observatory, Udaipur Solar Observatory, Instituto de Astrofísica de Canarias, and Cerro Tololo Interamerican Observatory.
+
+Citation
+link
+keyboard_arrow_up
+
+Azim Ahmadzadeh, Dustin J. Kempton, Qin Li, and Alexei A. Pevtsov. Solar Filament Segmentation Challenge 2026. https://www.kaggle.com/competitions/filament-segmentation-2026, 2026. Kaggle.
+
+Cite
+Competition Host
+
+Earth-Space AI Research (ESAIR) Lab
+
+Prizes & Awards
+
+$3,000
+
+Does not award Points or Medals
+
+Participation
+
+4,249 Entrants
+
+1,640 Participants
+
+1,377 Teams
+
+13,402 Submissions
+
+Tags
+Custom Metric
+Table of Contents
+collapse_all
+Overview
+Announcements
+Important Dates
+Final Submission
+Description
+Evaluation
+Self Evaluation
+Leaderboard Ranking
+Submission File
+Prizes
+Open-Access Policy
+Organizers
+Sponsor
+Acknowledgment
+Citation

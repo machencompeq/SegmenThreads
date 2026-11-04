@@ -1,0 +1,186 @@
+URL: https://www.kaggle.com/competitions/filament-segmentation-2026/data
+
+menu
+Skip to
+content
+
+Create
+
+Home
+
+Competitions
+
+Benchmarks
+
+Arenas
+
+Game Arena
+
+Data Hub
+
+More
+
+​
+Login
+Sign Up
+Kaggle uses cookies from Google to deliver and enhance the quality of its services and to analyze traffic.
+Learn more
+OK, Got it.
+Earth-Space AI Research (ESAIR) Lab · Community Prediction Competition · 11 days to go
+Join Competition
+more_horiz
+Solar Filament Segmentation Challenge 2026
+
+Automatic Segmentation of Solar Filaments using Computer Vision algorithms (with or without fitting) from GONG's H-Alpha Observations
+
+Overview
+Data
+Code
+Models
+Discussion
+Leaderboard
+Rules
+Dataset Description
+
+For this competition, you will need (1) images and (2) ground-truth annotations. Both of these items can be downloaded in this page. Below, click on the "Download All" button, and then choose "Download as zip". When the download is complete, unzip the downloaded file. The content of the unzipped file is shown below:
+
+MAGFiLO_1.0_Kaggle_2026/
+|-- train/
+|   |-- train_images/
+|   |-- MAGFiLO_1.0_Annotations_kaggle2026_train.json
+|-- test/
+    |-- test_images/
+
+Images and Annotations
+
+The goal is to identify solar filaments from solar images. Solar filaments are best visible in H-Alpha images. Therefore, we use the observations (images) captured by H-Alpha instruments of Global Oscillations Network Group (GONG). These are the same images used for creating the manual annotation of solar filaments available in MAGFiLO.
+
+These H-Alpha observations are images of size 2048 x 2048 pixels, which, for the sake of this competition, have been converted from their original FITS format to the standard 8-bit JPEG format. Contestants should note that these images are grayscale and should not be processed as color images (e.g., RGB images).
+
+Each observation's capture time and instrument are encoded in its file name as follows: YYYYMMDDHHMMSSII. For example, 20260901165702Bh.jpeg corresponds to the capture time of September 1, 2026, at 16:57:02, using the Big Bear (Bh) Solar Observatory.
+
+The H-alpha observations in MAGFiLO often contain multiple filaments. Further, all filaments present within one image may be annotated multiple times by different annotators, independently. As an example, the image with file_name as 20260901165702Bh.jpeg may have two sets of annotations, e.g., 010101-20260901165702Bh and 010102-20260901165702Bh (note that they are different by only one digit). You may treat those images simply as "different" images.
+
+For this competition, the ground-truth data are the filament segmentations. For storage efficiency, instead of binary masks, we store segmentations as polygons in RLE format. The conversion (RLE <-> Binary Masks) are lossless.
+
+The annotations are structured into the COCO-style data format. That means, you can take advantage of many common operations using the pycocotools python package (see https://github.com/ppwwyyxx/cocoapi).
+
+More Info about JSON File
+{
+"info": info,
+"images": [image],
+"annotations": [annotation],
+"licenses": [license],
+"categories": [category],
+}
+
+info{
+"year": int,
+"version": str,
+"description": str,
+"contributor": str,
+"url": str,
+"date_created": datetime,
+}
+
+license{
+"id": int,
+"name": str,
+"url": str,
+}
+
+categories[
+{
+   "id": int,
+   "name": str,
+   "supercategory": str,
+}]
+
+annotation{
+"id": str,
+"image_id": int,
+"category_id": int,
+"segmentation": [[]],
+"area": float,
+"spine": [],
+"bbox": [x, y, width, height],
+"iscrowd": 0 or 1,
+}
+
+image{
+"id": str,
+"width": int,
+"height": int,
+"file_name": str,
+"license": int,
+"date_captured": datetime,
+}
+
+info: corresponds to a dictionary containing metadata description of the dataset.
+images: corresponds to a list of image dictionaries.
+annotations: corresponds to a list of annotation dictionaries.
+licenses: corresponds to a dictionary containing the license information of the GONG H-Alpha images.
+categories: corresponds to a list of category dictionaries.
+image: corresponds to a dictionary containing information about an annotated image, including its name and downloadable URL.
+annotation: corresponds to a dictionary containing information about an annotated filament, including its segmentation and bounding box.
+license: corresponds to a dictionary describing the license of an image.
+category: corresponds to a dictionary containing the category information that each filament may be described with.
+More Information on Annotations
+A bounding box in annotation["bbox"] is represented with a list of 4 values, [x, y, width, height] , where x,y corresponds to the top-left corner of the box. All values are in pixels unit.
+A segmentation in annotation["segmentation"] is a list of floats representing a closed path. Each path forms a polygon capturing a filament's shape. A polygon made with n points is represented as [x_0, y_0, x_1, y_1, ..., x_(n-1), y_(n-1)] where x_0 = x_(n-1) and y_0 = y_(n-1).
+The area in annotation["area"] is the segmentation area (not the bbox area). This is computed using pycocoapi package, by first converting the polygon into RLE.
+A spine in annotation["spine"] is a list of floats representing a path. Each path captures a filament's spine. Disconnected line segments are not allowed. A spine with n points is represented as [x_0, y_0, x_1, y_1, ..., x_(n-1), y_(n-1)].
+The tag annotation["iscrowd"] is always zero indicating that each segmentation corresponds to a single filaments (i.e., no group of filaments is annotated together).
+Although annotation["segmentation"] is a list, it only contains one polygon. That is, each filament is annotated using a single-piece polygon.
+The class labels listed in category["name"] are: "Left" (id = 1), "Right", (id = 2), "Unidentifiable" (id = 3), and "Ambiguous" (id = 4).
+The image ids in image["id"] is a string that shows the annotator's batch name, as well as the name (together, unique). For example, id 010401-20160920230134Lh indicates that the image with name 20160920230134Lh.jpg is annotated by the annotator 010401, and it might have also been annotated by two other annotators, 010402 and 010403, in the same group.
+The annotation ids in annotation["id"] is a string (e.g., a7639f8a-c76d-43a7-b392-e75842262b75) generated by the annotation platform, which is unique for filaments.
+Files
+
+888 files
+
+Size
+
+750.97 MB
+
+Type
+
+jpeg, json
+
+License
+
+Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+
+MAGFiLO_1.0_Kaggle_2026(2 directories)
+fullscreen
+
+Competition Rules
+
+To see this data you need to agree to the competition rules.
+Please sign in or register to accept the rules.
+
+Sign In
+Data Explorer
+
+750.97 MB
+
+arrow_right
+folder
+
+MAGFiLO_1.0_Kaggle_2026
+
+Summary
+arrow_right
+folder
+
+888 files
+
+get_app
+Download All
+text_snippet
+Metadata
+License
+Attribution-NonCommercial 4.0 International (CC BY-NC 4.0)
+Could not load files: To see the data you need to agree to the competition rules
+
+Could not load files: To see the data you need to agree to the competition rules
