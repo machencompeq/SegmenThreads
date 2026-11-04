@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>SegmenThreads 進度全覽</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Serif+TC:wght@600;700&family=Noto+Sans+TC:wght@400;500;700&family=JetBrains+Mono:wght@400;600&display=swap">
+<style>
+/* 版面：單欄長文，左側窄目錄在寬螢幕時固定；色彩取自 H-alpha（656 nm 深紅）與太陽盤面灰 */
+:root {
+  --bg: #f6f4f0;
+  --panel: #ffffff;
+  --panel-2: #efe9e2;
+  --fg: #1f1b19;
+  --muted: #6b625c;
+  --line: #d9d1c8;
+  --accent: #a4281c;
+  --accent-soft: #f3dcd8;
+  --ok: #2d6a4f;
+  --ok-soft: #dcefe3;
+  --warn: #9a6400;
+  --warn-soft: #f7ebcf;
+  --bad: #9b2226;
+  --bad-soft: #f5d9da;
+  --code-bg: #2a2522;
+  --code-fg: #f1e9e0;
+  --font-display: "Noto Serif TC", "Microsoft JhengHei", "PingFang TC", serif;
+  --font-body: "Noto Sans TC", "Microsoft JhengHei", "PingFang TC", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", Consolas, "Courier New", monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #15120f; --panel: #1f1a16; --panel-2: #29221d; --fg: #efe8e0; --muted: #a79c92; --line: #3b322b;
+    --accent: #e0695a; --accent-soft: #3d201c; --ok: #7fc8a0; --ok-soft: #1d3328; --warn: #e2b04a; --warn-soft: #3a2e14;
+    --bad: #ef8a8e; --bad-soft: #3d1c1e; --code-bg: #0f0d0b; --code-fg: #ece4da; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #15120f; --panel: #1f1a16; --panel-2: #29221d; --fg: #efe8e0; --muted: #a79c92; --line: #3b322b;
+  --accent: #e0695a; --accent-soft: #3d201c; --ok: #7fc8a0; --ok-soft: #1d3328; --warn: #e2b04a; --warn-soft: #3a2e14;
+  --bad: #ef8a8e; --bad-soft: #3d1c1e; --code-bg: #0f0d0b; --code-fg: #ece4da; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+@media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+body {
+  margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 16px; line-height: 1.75;
+  padding-block: 0 4rem; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+.wrap { max-width: 1120px; margin: 0 auto; display: grid; grid-template-columns: 1fr; gap: 0 2.5rem; }
+@media (min-width: 980px) { .wrap { grid-template-columns: 200px minmax(0, 1fr); } }
+nav.toc { display: none; }
+@media (min-width: 980px) {
+  nav.toc { display: block; position: sticky; top: 1.5rem; align-self: start; font-size: 13px; padding-top: 2.4rem; }
+  nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: .22rem 0 .22rem .75rem; border-left: 2px solid var(--line); }
+  nav.toc a:hover, nav.toc a:focus-visible { color: var(--accent); border-left-color: var(--accent); }
+}
+main { min-width: 0; }
+header.hero { padding: 2.4rem 0 1.4rem; border-bottom: 1px solid var(--line); margin-bottom: 1.6rem; }
+.eyebrow { font-size: 12px; letter-spacing: .14em; text-transform: uppercase; color: var(--accent); font-weight: 700; }
+h1 { font-family: var(--font-display); font-size: clamp(1.9rem, 3.6vw, 2.7rem); line-height: 1.2; margin: .3rem 0 .6rem; text-wrap: balance; }
+h2 { font-family: var(--font-display); font-size: 1.55rem; margin: 3rem 0 .9rem; padding-top: .5rem; text-wrap: balance; scroll-margin-top: 1rem; }
+h2 .num { color: var(--accent); font-family: var(--font-mono); font-size: .9rem; margin-right: .6rem; vertical-align: .25em; }
+h3 { font-size: 1.1rem; margin: 1.6rem 0 .5rem; }
+p { margin: .55rem 0; max-width: 72ch; }
+.lead { font-size: 1.07rem; color: var(--muted); max-width: 70ch; }
+ul, ol { padding-left: 1.4rem; max-width: 75ch; }
+li { margin: .25rem 0; }
+.cards { display: grid; gap: .9rem; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); margin: 1.2rem 0; }
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: .9rem 1rem; min-width: 0; }
+.card .k { font-size: 12px; color: var(--muted); letter-spacing: .04em; }
+.card .v { font-family: var(--font-mono); font-size: 1.5rem; font-weight: 600; line-height: 1.2; margin-top: .15rem; font-variant-numeric: tabular-nums; }
+.card .s { font-size: 13px; color: var(--muted); margin-top: .2rem; }
+.note { background: var(--panel-2); border-left: 4px solid var(--accent); padding: .8rem 1rem; border-radius: 0 8px 8px 0; margin: 1rem 0; max-width: 78ch; }
+.note.ok { border-left-color: var(--ok); }
+.note.warn { border-left-color: var(--warn); }
+.note b:first-child { display: block; margin-bottom: .2rem; }
+.tablewrap { overflow-x: auto; margin: 1rem 0; border: 1px solid var(--line); border-radius: 10px; background: var(--panel); }
+table { border-collapse: collapse; width: 100%; font-size: 14.5px; min-width: 520px; }
+th, td { text-align: left; padding: .55rem .8rem; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { background: var(--panel-2); font-weight: 700; white-space: nowrap; }
+tr:last-child td { border-bottom: 0; }
+td.num, th.num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.pill { display: inline-block; font-size: 12px; font-weight: 700; padding: .05rem .5rem; border-radius: 999px; white-space: nowrap; }
+.pill.ok { background: var(--ok-soft); color: var(--ok); }
+.pill.warn { background: var(--warn-soft); color: var(--warn); }
+.pill.bad { background: var(--bad-soft); color: var(--bad); }
+.pill.info { background: var(--accent-soft); color: var(--accent); }
+code { font-family: var(--font-mono); font-size: .88em; background: var(--panel-2); padding: .05rem .35rem; border-radius: 4px; }
+pre { background: var(--code-bg); color: var(--code-fg); padding: .9rem 1rem; border-radius: 8px; overflow-x: auto; font-family: var(--font-mono); font-size: 13.5px; line-height: 1.6; }
+pre code { background: none; padding: 0; color: inherit; font-size: inherit; }
+figure { margin: 1.2rem 0; }
+figure img { width: 100%; height: auto; border-radius: 8px; border: 1px solid var(--line); display: block; }
+figcaption { font-size: 13.5px; color: var(--muted); margin-top: .45rem; max-width: 78ch; }
+.svgwrap { overflow-x: auto; }
+svg.diagram { max-width: 100%; height: auto; display: block; color: var(--fg); }
+.two { display: grid; gap: 1rem; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+.two > div { min-width: 0; }
+.step { display: grid; grid-template-columns: 2.2rem 1fr; gap: .6rem; margin: .7rem 0; max-width: 78ch; }
+.step .n { font-family: var(--font-mono); color: var(--accent); font-weight: 600; }
+.formula { font-family: var(--font-mono); background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: .8rem 1rem; display: inline-block; margin: .5rem 0; font-size: 15px; }
+dl.gloss { max-width: 78ch; }
+dl.gloss dt { font-weight: 700; margin-top: .8rem; }
+dl.gloss dd { margin: .1rem 0 0 0; color: var(--fg); }
+.timeline { border-left: 2px solid var(--line); padding-left: 1.1rem; max-width: 78ch; }
+.timeline .t { position: relative; margin: .8rem 0; }
+.timeline .t::before { content: ""; position: absolute; left: -1.46rem; top: .55rem; width: 10px; height: 10px; border-radius: 50%; background: var(--accent); }
+.timeline .t .d { font-family: var(--font-mono); font-size: 12.5px; color: var(--muted); }
+footer { margin-top: 3rem; color: var(--muted); font-size: 13px; border-top: 1px solid var(--line); padding-top: 1rem; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<nav class="toc" aria-label="目錄">
+  <a href="#now">現在在哪</a>
+  <a href="#contest">比賽在考什麼</a>
+  <a href="#data">資料長什麼樣</a>
+  <a href="#method">方法：管線</a>
+  <a href="#decisions">設計決策與依據</a>
+  <a href="#review">多 agent 審查</a>
+  <a href="#changes">這一輪改了什麼</a>
+  <a href="#verified">驗證／未驗證</a>
+  <a href="#risks">風險</a>
+  <a href="#files">檔案地圖</a>
+  <a href="#next">下一步：上 Kaggle</a>
+  <a href="#deliver">11/15 前要交的</a>
+  <a href="#history">12 輪經過</a>
+  <a href="#gloss">名詞小辭典</a>
+</nav>
+<main>
+
+<header class="hero">
+  <div class="eyebrow">Solar Filament Segmentation Challenge 2026 · IEEE BigData Cup · Kaggle</div>
+  <h1>太陽暗絲分割：比賽、方法、進度一次看懂</h1>
+  <p class="lead">這一頁寫給你（machen）看：比賽到底要做什麼、我們的程式怎麼運作、每個設計背後的量測依據、這一輪五位 agent 審查出了什麼、改了什麼，以及接下來你要在 Kaggle 做的事。更新時間：2026-11-04。</p>
+</header>
+
+<h2 id="now"><span class="num">00</span>現在在哪</h2>
+<div class="cards">
+  <div class="card"><div class="k">距離截止</div><div class="v">12 天</div><div class="s">11/16 12:59 台灣時間（11/15 23:59 CDT）</div></div>
+  <div class="card"><div class="k">我們的分數</div><div class="v">尚未訓練</div><div class="s">程式本機驗證完成，等 GPU 跑一次</div></div>
+  <div class="card"><div class="k">標註員互比 PQ</div><div class="v">0.352</div><div class="s">兩位專家互相當答案的分數，是實際上限</div></div>
+  <div class="card"><div class="k">主辦方門檻</div><div class="v">&gt; 0.35</div><div class="s">公告：PQ 超過 0.35 就很有價值</div></div>
+</div>
+<div class="note ok"><b>一句話結論</b>程式從讀資料、訓練、調參到產生提交檔，整條路在本機 CPU 都跑得通；評分函式和主辦方公開的程式逐字比對結果相同。還沒做的只有一件：在 Kaggle 的 GPU 上真的訓練一次。這一步需要你在瀏覽器裡操作（<a href="#next">第 10 節</a>）。</div>
+<div class="note warn"><b>誠實的自評</b>方法是穩健的基準款，不是奇招。這一輪審查沒有找到會讓提交失敗的 bug，但找到了三個「悄悄吃掉分數」的問題並修掉（<a href="#changes">第 6 節</a>）。真正的分數要等訓練結束才知道。</div>
+
+<h2 id="contest"><span class="num">01</span>比賽在考什麼</h2>
+<h3>任務：把每一條暗絲各自圈出來</h3>
+<p>GONG 天文台網路拍下太陽的 H-alpha 影像（2048×2048、灰階 JPEG）。太陽盤面上有一些細長的深色條紋，叫做<b>暗絲</b>（filament），是懸浮在太陽表面上方比較冷的物質。比賽要我們對 180 張測試影像，<b>為每一條暗絲各輸出一個獨立的遮罩</b>（哪幾個像素屬於它）。</p>
+<p>生活比喻：一盤麵倒在桌上，不是問「桌上哪裡有麵」，而是要把<b>每一根麵條</b>分別描出來。兩根麵條靠在一起被你畫成一根會扣分，一根被你斷成兩段也會扣分。</p>
+
+<h3>評分：Panoptic Quality（PQ）</h3>
+<div class="formula">PQ = Σ<sub>配對成功</sub> IoU ÷ ( TP + 0.5·FP + 0.5·FN )</div>
+<ul>
+  <li><b>IoU</b>（交集 ÷ 聯集）：我們畫的和答案重疊多少。重疊超過一半（&gt; 0.5）才算<b>配對成功（TP）</b>。</li>
+  <li><b>FP</b>：我們畫了、答案沒有的（誤報）。<b>FN</b>：答案有、我們沒畫到的（漏掉）。</li>
+  <li>配對靠實際重疊，不看編號順序。一條暗絲被切成好幾段（一對多）或兩條被併成一條（多對一），都會被扣，而且主辦方會另外統計這兩種比例。</li>
+</ul>
+<div class="tablewrap"><table>
+  <caption style="text-align:left;padding:.5rem .8rem;color:var(--muted);font-size:13.5px">算例：一張圖有 12 條暗絲，我們完美畫出 11 條、漏了 1 條</caption>
+  <tr><th>項目</th><th class="num">值</th><th>說明</th></tr>
+  <tr><td>TP</td><td class="num">11</td><td>11 條都和答案重疊 100%，IoU 各為 1.0</td></tr>
+  <tr><td>FP / FN</td><td class="num">0 / 1</td><td>沒有誤報，漏了一條</td></tr>
+  <tr><td>PQ</td><td class="num">11 ÷ 11.5 = 0.9565</td><td>我們的測試程式算出一樣的數字</td></tr>
+</table></div>
+<p>為什麼標註員互比只有 0.352？因為暗絲邊界本來就模糊，兩位專家對同一張圖畫出的遮罩中位數只有 47% 重疊，而且有三分之一的暗絲只有一位專家標。這表示 0.35 左右已經是「和專家一樣好」，不是模型很差。</p>
+
+<h3>總評分與獎金</h3>
+<ul>
+  <li><b>量化 70%</b>：PQ 排名，加上 Dice、IoU 分布、一對多與多對一比例。</li>
+  <li><b>質化 30%</b>：流程說明、預測結果的外觀、<b>程式碼品質（模組化與文件）</b>。這 30% 是這一輪審查特別補強的。</li>
+  <li>獎金最多 3,000 美元，前三名依分數平方分配；須能收美國銀行匯款。</li>
+</ul>
+
+<h3>規則重點</h3>
+<ul>
+  <li>每天最多提交 <b>5 次</b>，截止前要勾選最多 <b>2 個</b>作為最終成績。</li>
+  <li>可以用預訓練模型與外部資料；推論時只能用 test 資料夾的影像。</li>
+  <li>可以用 AI 輔助寫程式，但<b>得獎者必須能解釋、重現每個主要部分</b>，否則可能失去資格。所以這一頁和 README 都在幫你能講清楚每一步。</li>
+  <li>想爭取獎金要另外交：4 頁技術報告（官方 Overleaf 模板）＋ <b>公開 Git repo</b>（含版本固定的 requirements.txt、能跑完整流程的 notebook、<b>模型權重</b>）。見 <a href="#deliver">第 11 節</a>。</li>
+</ul>
+
+<h2 id="data"><span class="num">02</span>資料長什麼樣</h2>
+<div class="cards">
+  <div class="card"><div class="k">訓練影像</div><div class="v">707</div><div class="s">2048×2048 灰階</div></div>
+  <div class="card"><div class="k">測試影像</div><div class="v">180</div><div class="s">沒有答案，要交這些的預測</div></div>
+  <div class="card"><div class="k">標註組數</div><div class="v">1,154</div><div class="s">同一張圖最多 3 位標註員各標一次</div></div>
+  <div class="card"><div class="k">暗絲總數</div><div class="v">8,199</div><div class="s">每組平均 7.1 條，最多 26 條</div></div>
+</div>
+<ul>
+  <li>檔名格式 <code>YYYYMMDDHHMMSSII</code>，最後兩碼是天文台（6 個站：Lh、Ch、Mh、Bh、Th、Uh，數量平均）。測試集的站別和年份分布與訓練集相同，沒有偏移。</li>
+  <li>標註是沿暗絲邊緣畫的多邊形（COCO 格式）。另附脊線 spine、外框 bbox、類別（Left / Right / Unidentifiable / Ambiguous），比賽只看遮罩不看類別。</li>
+  <li>暗絲很細：最寬處的寬度中位數 <b>15.6 px</b>，最細的 5% 只有 8 px（縮到 1024 後分別是 7.8 px 和 4 px）。暗絲像素只佔全圖 <b>0.37%</b>。盤面外是純黑（0），約佔兩成像素。</li>
+  <li>暗絲比周圍只暗約 12%，對比很低，這是題目難的地方。</li>
+  <li>同一張圖有 2 位標註員的 145 張、3 位的 151 張；兩位標註員的聯集遮罩 IoU 中位數 0.47，59% 的配對不到 0.5。</li>
+</ul>
+<figure>
+  <img src="viz/010101-20131025185414Mh.jpg" alt="三欄圖：原始 H-alpha 影像、標註輪廓疊圖、一條暗絲的放大">
+  <figcaption>左：原圖。中：標註員畫的多邊形輪廓（紅框）。右：放大其中一條暗絲。這張圖有 26 條，是訓練集裡最多的。</figcaption>
+</figure>
+<figure>
+  <img src="viz/040102-20140607112354Uh.jpg" alt="另一張影像的三欄圖，暗絲數量中等">
+  <figcaption>一張暗絲數量中等的影像。注意暗絲和背景對比很低，邊界要靠肉眼判斷。</figcaption>
+</figure>
+
+<h2 id="method"><span class="num">03</span>方法：從一張圖到一列列 RLE</h2>
+<figure>
+<div class="svgwrap">
+<svg class="diagram" role="img" aria-label="推論管線：2048 灰階影像縮到 1024，進 U-Net 得到機率圖，8 向 TTA 平均，三次插值放回 2048，門檻二值化，連通元件切成實例，去掉小碎片，編成 RLE 列" viewBox="0 0 980 260" xmlns="http://www.w3.org/2000/svg">
+  <defs><marker id="arr" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 L10 5 L0 10 z" fill="currentColor"/></marker></defs>
+  <g font-family="Noto Sans TC, Microsoft JhengHei, sans-serif" font-size="12.5" fill="currentColor" stroke="currentColor" stroke-width="1.2">
+    <!-- row 1 -->
+    <rect x="10" y="30" width="170" height="60" rx="8" fill="none"/>
+    <text x="95" y="54" text-anchor="middle" stroke="none">① 原圖 2048² 灰階</text>
+    <text x="95" y="74" text-anchor="middle" stroke="none" font-size="11" opacity=".75">INTER_AREA 縮到 1024²</text>
+    <line x1="180" y1="60" x2="222" y2="60" marker-end="url(#arr)"/>
+    <rect x="224" y="30" width="170" height="60" rx="8" fill="none" stroke="#a4281c" stroke-width="2"/>
+    <text x="309" y="54" text-anchor="middle" stroke="none">② U-Net（ResNet34）</text>
+    <text x="309" y="74" text-anchor="middle" stroke="none" font-size="11" opacity=".75">每個像素是暗絲的機率</text>
+    <line x1="394" y1="60" x2="436" y2="60" marker-end="url(#arr)"/>
+    <rect x="438" y="30" width="170" height="60" rx="8" fill="none"/>
+    <text x="523" y="54" text-anchor="middle" stroke="none">③ 8 向 TTA 平均</text>
+    <text x="523" y="74" text-anchor="middle" stroke="none" font-size="11" opacity=".75">旋轉 4 種 × 翻轉 2 種</text>
+    <line x1="608" y1="60" x2="650" y2="60" marker-end="url(#arr)"/>
+    <rect x="652" y="30" width="170" height="60" rx="8" fill="none"/>
+    <text x="737" y="54" text-anchor="middle" stroke="none">④ 放回 2048²</text>
+    <text x="737" y="74" text-anchor="middle" stroke="none" font-size="11" opacity=".75">三次插值（保留軟邊界）</text>
+    <!-- turn -->
+    <path d="M822 60 H900 V150 H822" fill="none" marker-end="url(#arr)"/>
+    <!-- row 2 (right to left) -->
+    <rect x="652" y="120" width="170" height="60" rx="8" fill="none"/>
+    <text x="737" y="144" text-anchor="middle" stroke="none">⑤ 門檻二值化</text>
+    <text x="737" y="164" text-anchor="middle" stroke="none" font-size="11" opacity=".75">thr 由驗證集決定</text>
+    <line x1="652" y1="150" x2="610" y2="150" marker-end="url(#arr)"/>
+    <rect x="438" y="120" width="170" height="60" rx="8" fill="none"/>
+    <text x="523" y="144" text-anchor="middle" stroke="none">⑥ 連通元件 = 實例</text>
+    <text x="523" y="164" text-anchor="middle" stroke="none" font-size="11" opacity=".75">可選：先膨脹 link_px 連碎片</text>
+    <line x1="438" y1="150" x2="396" y2="150" marker-end="url(#arr)"/>
+    <rect x="224" y="120" width="170" height="60" rx="8" fill="none"/>
+    <text x="309" y="144" text-anchor="middle" stroke="none">⑦ 丟掉小碎片</text>
+    <text x="309" y="164" text-anchor="middle" stroke="none" font-size="11" opacity=".75">min_area 由驗證集決定</text>
+    <line x1="224" y1="150" x2="182" y2="150" marker-end="url(#arr)"/>
+    <rect x="10" y="120" width="170" height="60" rx="8" fill="none"/>
+    <text x="95" y="144" text-anchor="middle" stroke="none">⑧ 每條暗絲一列 RLE</text>
+    <text x="95" y="164" text-anchor="middle" stroke="none" font-size="11" opacity=".75">submission.csv</text>
+    <!-- training note -->
+    <text x="10" y="222" stroke="none" font-size="12" opacity=".8">訓練時：② 的目標是「各標註員遮罩的平均」，縮到 1024 時保留面積比例（軟標籤），損失函數 BCE + Dice。</text>
+    <text x="10" y="244" stroke="none" font-size="12" opacity=".8">⑤⑥⑦ 的三個參數（thr、min_area、link_px）用驗證集的 PQ 做網格搜尋挑出，存成 postprocess.json。</text>
+  </g>
+</svg>
+</div>
+<figcaption>推論管線。紅框是唯一需要 GPU 的步驟；其餘都是傳統影像處理。</figcaption>
+</figure>
+
+<div class="step"><div class="n">①</div><div><b>縮圖</b>。2048² 太大，GPU 吃不下也太慢，先縮到 1024²。用 INTER_AREA（面積平均），不會讓細線斷掉。</div></div>
+<div class="step"><div class="n">②</div><div><b>U-Net</b>。一個像沙漏的神經網路：先一路壓縮抓「哪裡像暗絲」，再一路放大回原尺寸，並把壓縮前的細節接回去。編碼器 ResNet34 用 ImageNet 預訓練權重起步（看過一百萬張照片的「眼睛」），輸入改成 1 通道灰階。輸出每個像素是暗絲的機率。</div></div>
+<div class="step"><div class="n">③</div><div><b>TTA</b>（測試時增強）。同一張圖轉 4 個角度、各再左右翻一次，共 8 個版本都預測，再轉回來平均。像請 8 個人看同一張圖投票，雜訊會互相抵消。訓練時也做了同樣的 8 種變換，所以模型對每個方向都熟。</div></div>
+<div class="step"><div class="n">④</div><div><b>放大回 2048</b>。用三次插值（bicubic）而不是線性，因為機率圖是「軟」的，三次插值能保留亞像素的邊界資訊（實測差距見第 4 節）。</div></div>
+<div class="step"><div class="n">⑤⑥⑦</div><div><b>後處理</b>。機率超過門檻的像素是暗絲；彼此相連的像素群（連通元件）就是一條暗絲；太小的碎片丟掉。可選的 link_px 會先把遮罩「加粗」一點點來判斷哪些碎片其實是同一條，再切回原本的像素。</div></div>
+<div class="step"><div class="n">⑧</div><div><b>RLE 編碼</b>。每條暗絲的遮罩用 pycocotools 壓成一串字元（和主辦方同一個函式庫），寫成 <code>影像id_流水號,RLE</code> 的一列。寫完立刻用主辦方的讀法（pandas 預設）讀回來比對。</div></div>
+
+<h3>訓練怎麼做</h3>
+<ul>
+  <li><b>資料切分</b>：15% 的檔案留作驗證集（106 張、170 組標註），<b>以拍攝日期分組</b>：同一天不同站拍的照片會一起在訓練或驗證，避免「同一顆太陽同一分鐘」的近重複洩漏。</li>
+  <li><b>目標</b>：每張圖一筆，標籤是該圖所有標註員遮罩的<b>平均</b>（0、1/3、1/2、2/3、1），縮到 1024 時保留面積比例不二值化。</li>
+  <li><b>損失</b>：BCE（逐像素）＋ soft Dice（整體重疊），對付暗絲只佔 0.37% 的極度不平衡。</li>
+  <li><b>最佳化</b>：AdamW、學習率 3e-4、OneCycle 排程、40 個 epoch、batch 4、混合精度（AMP）。</li>
+  <li><b>增強</b>：旋轉／翻轉 8 種，加上亮度、偏移、gamma 抖動（模擬不同站點、不同天氣），盤面外的純黑背景保持為 0。</li>
+  <li><b>選模型</b>：每 5 個 epoch（最後 10 個每 2 個）在驗證集算 PQ，門檻試 0.3～0.6 取最好，存最佳權重 best.pt 和最後權重 last.pt。</li>
+  <li><b>調參</b>：訓練完用 8 向 TTA 算一次驗證集機率圖，對 thr（4 個值）× min_area（5 個）× link_px（3 個）共 60 組算 PQ，取最高。</li>
+</ul>
+
+<h2 id="decisions"><span class="num">04</span>設計決策與量測依據</h2>
+<p>每個決定都有一個對應的數字；這些數字可以用 <code>scripts/measure_filaments.py</code> 和 <code>scripts/annotator_agreement.py</code> 重算。</p>
+<div class="tablewrap"><table>
+  <tr><th>決策</th><th>怎麼做</th><th>量測依據</th></tr>
+  <tr><td>解析度 1024</td><td>訓練與推論都在 1024²</td><td>最寬處中位數 15.6 px、最細 5% 為 8 px；縮到 512 時最細的只剩 2 px。1024 下沒有任何暗絲消失或斷裂（50 組 325 條實測）。</td></tr>
+  <tr><td>軟標籤</td><td>縮圖後保留面積比例，不做 ≥0.5 二值化</td><td>神諭實驗（把正確答案當完美預測走一遍管線）：硬二值化上限 PQ <b>0.899</b>；軟標籤＋三次插值上限 <b>0.991</b>（1536 時 0.949 / 0.998）。</td></tr>
+  <tr><td>三次插值放大</td><td>INTER_CUBIC 取代 INTER_LINEAR</td><td>軟機率圖下：線性 0.975 vs 三次 0.991；二值圖下兩者一樣，所以要和軟標籤一起用。</td></tr>
+  <tr><td>每張圖一筆、標註員平均</td><td>不再把 3 位標註員當 3 筆不同答案</td><td>兩位標註員遮罩 IoU 中位數 0.47；原做法讓多人標的圖權重 2～3 倍且標籤互相矛盾。留一法實驗顯示合併規則不影響上限（0.33～0.35），所以依訊號品質選平均。</td></tr>
+  <tr><td>min_area 網格 50～300</td><td>原本 100～800</td><td>真實暗絲面積 p1 = 209、p5 = 317 px；min_area 400 會直接丟掉 8% 的真暗絲、800 丟掉 31%（神諭 PQ 掉到 0.82）。</td></tr>
+  <tr><td>link_px 保留 0</td><td>網格 0 / 3 / 6</td><td>同一組標註裡 342 對暗絲沒有任何一對相碰；膨脹反而會把鄰居併在一起（link 10 讓神諭 PQ 掉 1.8 點）。只在模型把暗絲切碎時才有用。</td></tr>
+  <tr><td>8 向 TTA</td><td>原本 4 種翻轉</td><td>訓練增強已涵蓋 8 種對稱，推論只用一半不一致；成本是推論時間 2 倍（180 張約幾分鐘），合理。</td></tr>
+  <tr><td>以日期分組切分</td><td>YYYYMMDD 同一天同一側</td><td>舊切法有 2 張驗證圖在訓練集有同一分鐘別站拍的孿生圖（影像相關 0.97）。新切法 0 張同日重疊，檔案數仍是 601 / 106。</td></tr>
+  <tr><td>以門檻擇優選模型</td><td>每次驗證試 0.3～0.6</td><td>軟標籤會讓機率往 0.5 靠，固定 0.5 排名會失真。多算 3 個門檻只需幾秒。</td></tr>
+  <tr><td>fp16 權重</td><td>存 47～49 MB</td><td>fp32 是 93 MB，GitHub 單檔上限 100 MB、50 MB 起警告；fp16 載回去再轉 fp32，推論結果相同。</td></tr>
+</table></div>
+
+<h2 id="review"><span class="num">05</span>這一輪：五位 agent 平行審查</h2>
+<p>你要求派多個 agent 仔細審視再拿出最好成果。我把程式切成五個互不相干的面向，各派一位 agent 讀碼、寫實驗腳本、跑數據，只回報不改檔，由我統一整合，避免互相覆蓋。每位的回報都附證據（數字或原始碼行號）。</p>
+<div class="tablewrap"><table>
+  <tr><th>面向</th><th>主要發現</th><th>嚴重度</th><th>處理</th></tr>
+  <tr><td><b>評分指標與提交格式</b></td><td>拿到主辦方自我評估 notebook 原始碼，逐字對照：IoU 門檻（嚴格 &gt;0.5）、FP/FN 計法、整體加總、空影像處理、RLE 解碼、filament_id 解析（第一個底線切）全部相同；40 張圖實測 TP/FP/FN/PQ 到小數第 6 位一致。資料裡 8,199 筆標註都是單一多邊形，無遺漏；主辦方的 area 欄位和 pycocotools 光柵化完全相等。</td><td><span class="pill ok">無阻斷</span></td><td>加固：RLE 形狀錯誤改丟例外、載入標註檢查格式、零面積標註算 FN、提交檔用 pandas 讀回驗證。</td></tr>
+  <tr><td><b>資料與訓練流程</b></td><td>多標註員當不同答案造成矛盾與加權不均（should-fix）；1024 不會丟實例但邊界損失約 10%；smp 單通道處理正確；autocast 下 loss 安全但脆弱；DataLoader worker 種子其實沒問題；切分有 2 張近重複洩漏；RAM 約 2.2 GB、T4 全程估 1～1.7 小時。</td><td><span class="pill warn">應修</span></td><td>改成每檔一筆軟標籤；loss 先轉 fp32；日期分組切分；門檻擇優選模型；亮度抖動範圍調整、背景保持黑。</td></tr>
+  <tr><td><b>後處理與推論</b></td><td>連通元件程式正確（合成測試通過）。神諭實驗找到最大改善點：硬二值化上限 0.899 → 軟標籤＋三次插值 0.991。舊版每個實例配一張 2048² 全圖，雜訊圖 387 個碎片時一次 2.7 秒、網格搜尋要 5 小時，3,000 個碎片直接記憶體不足（我在本機重現：5,811 個碎片時舊版當掉，新版 47 毫秒）。</td><td><span class="pill bad">會當掉</span></td><td>後處理改成向量化標籤圖（結果與舊版逐像素相同）；網格改 4×5×3；三次插值；8 向 TTA。</td></tr>
+  <tr><td><b>Kaggle notebook 能否跑完</b></td><td>notebook 與原始碼同步；確認這是上傳 CSV 的一般賽（不是 code competition）；資料夾結構與下載版相同；smp 在 Kaggle 沒預裝，需 Internet On，而 GPU 與 Internet 都要<b>手機驚證</b>；忘了選 GPU 會在 CPU 上默默跑到超時；缺少不用重訓的推論路徑；輸出緩衝讓前 5 分鐘看不到任何訊息。</td><td><span class="pill warn">應修</span></td><td>加 GPU 檢查 cell、固定套件版本、<code>python -u</code>、MODE 切換 train/predict、結果摘要 cell、cell id、環境版本寫檔。</td></tr>
+  <tr><td><b>程式碼品質與交付物</b></td><td>模組切分本身良好；但缺 requirements.txt、README、LICENSE、.gitignore、權重與不重訓推論（這些是規則<b>硬性要求</b>）；train.py 110 行單一函式；魔術數字重複三處；測試是模組層級的腳本不是 pytest；一個未用 import；walkthrough 有 6 處敘述過頭或不可重現。</td><td><span class="pill bad">缺交付物</span></td><td>train.py 拆成函式；PostprocessParams 資料類；新 submission 模組；補齊六個交付檔；pytest 測試；分析腳本；本頁重寫。</td></tr>
+</table></div>
+<div class="note ok"><b>最重要的一句</b>我們的本機 PQ 和主辦方的評分程式是同一個算法，所以在 Kaggle 上看到的分數應該和本機驗證集的數字很接近（主辦方可能多做一些邊界檢查，無法事先驗證）。</div>
+
+<h2 id="changes"><span class="num">06</span>這一輪改了什麼（前 → 後）</h2>
+<div class="tablewrap"><table>
+  <tr><th>檔案</th><th>之前</th><th>之後</th><th>為什麼</th></tr>
+  <tr><td><code>filament/dataset.py</code></td><td>每組標註一筆；遮罩縮小後 ≥0.5 二值化</td><td>每張圖一筆；目標 = 標註員平均，保留面積比例（軟標籤）；背景保持黑</td><td>上限 0.899 → 0.991；去除矛盾標籤與不均加權</td></tr>
+  <tr><td><code>filament/postprocess.py</code></td><td>每個實例配一張 2048² 全圖</td><td>單一標籤圖＋查表；<code>PostprocessParams</code>、<code>DEFAULT_GRID</code></td><td>雜訊圖從當掉變 47 ms；參數不再散落三處</td></tr>
+  <tr><td><code>filament/inference.py</code></td><td>4 種翻轉；線性放大</td><td>8 向 D4 對稱（可選）；三次插值；輸出夾到 [0,1]</td><td>和訓練增強一致；保留軟邊界</td></tr>
+  <tr><td><code>filament/data.py</code></td><td>照檔名隨機切；<code>segmentation[0]</code> 不檢查</td><td>以日期分組切；格式檢查；Kaggle 路徑直達；常數集中</td><td>去除近重複洩漏；日後格式變動會大聲失敗</td></tr>
+  <tr><td><code>filament/metric.py</code></td><td>零面積標註會被跳過</td><td>保留為 FN；文件註明與主辦方對照結果</td><td>和主辦方行為一致</td></tr>
+  <tr><td><code>filament/model.py</code></td><td>只有模型與 loss</td><td>loss 先轉 fp32；<code>save_weights / load_weights</code>（fp16＋sidecar JSON）</td><td>權重可進 repo、不靠命令列預設值重建</td></tr>
+  <tr><td><code>filament/submission.py</code></td><td>（寫在 train.py 裡，用 assert）</td><td>獨立模組：寫檔、用 pandas 讀回、檢查 id 唯一與前綴</td><td>推論模式可重用；用主辦方的讀法驗證</td></tr>
+  <tr><td><code>train.py</code></td><td>一個 110 行 main</td><td><code>Validator</code>、<code>train_model</code>、<code>tune_postprocess</code>、<code>predict_test</code>；<code>--predict-only --weights --postprocess</code>、<code>--seed</code>；輸出 postprocess.json、environment.json</td><td>規則要求不重訓即可重現；質化 30% 看模組化</td></tr>
+  <tr><td><code>build_notebook.py</code></td><td>15 cell，無 GPU 檢查，套件不固定版本</td><td>19 cell：MODE 切換、GPU assert、版本固定、<code>-u</code>、結果摘要、cell id</td><td>忘選 GPU 會立刻停下而不是跑 9 小時</td></tr>
+  <tr><td><code>tests/</code>、<code>scripts/</code></td><td>一個需要資料的腳本</td><td>pytest 風格、無資料也能跑的合成測試；三個分析腳本重算報告數字</td><td>評審能 1 秒跑完測試；數字可重現</td></tr>
+  <tr><td>repo 根目錄</td><td>無</td><td>README.md、requirements.txt、requirements-dev.txt、LICENSE（MIT）、.gitignore、pyproject.toml</td><td>規則硬性要求</td></tr>
+</table></div>
+<div class="note"><b>關於註解語言</b>repo 內的程式註解、docstring、README 用英文，因為質化分數由美國的評審團直接讀；你的筆記（對話紀錄、比賽重點、這一頁）維持繁體中文。這是審查建議，若你希望改成中文註解，告訴我即可。</div>
+
+<h2 id="verified"><span class="num">07</span>驗證了什麼、還沒驗證什麼</h2>
+<div class="two">
+  <div>
+    <h3><span class="pill ok">已驗證</span></h3>
+    <ul>
+      <li>PQ 與主辦方 notebook 程式逐字對照、40 張圖數值一致。</li>
+      <li>RLE 無損來回（400 張真實遮罩、含反斜線的字串、pandas 讀回）。</li>
+      <li>新後處理與舊版在 6 張圖 × 4 組參數下分出的實例完全相同。</li>
+      <li>8 向 TTA 的 8 個正反變換都能還原原圖。</li>
+      <li>日期分組切分：0 個同日重疊，601 / 106 個檔案。</li>
+      <li>CPU 冒煙測試：訓練模式與 predict-only 模式都從頭跑到提交檔並通過讀回驗證。</li>
+      <li>notebook 的 10 個程式 cell 與原始檔逐字相同。</li>
+      <li>神諭實驗數字（0.899 / 0.991 等）由兩位 agent 各自用真實資料實測，並由 scripts/measure_filaments.py 重算。</li>
+    </ul>
+  </div>
+  <div>
+    <h3><span class="pill warn">尚未驗證</span></h3>
+    <ul>
+      <li><b>真正的訓練</b>：本機沒有 GPU，分數、訓練時間、VRAM 用量（估 6～9 GB）都還是估計。</li>
+      <li>軟標籤對<b>模型</b>的實際增益：神諭上限是 0.99，模型做不到完美，實際增益會小於上限差距。</li>
+      <li>主辦方在排行榜上額外的「邊界情況檢查」內容。</li>
+      <li>Kaggle 介面操作步驟中標示「不確定」的部分。</li>
+      <li>隱藏測試集的答案是怎麼合併多位標註員的。</li>
+    </ul>
+  </div>
+</div>
+
+<h2 id="risks"><span class="num">08</span>風險與已知弱點</h2>
+<div class="tablewrap"><table>
+  <tr><th>風險</th><th>影響</th><th>對策</th></tr>
+  <tr><td>1024 解析度的邊界損失</td><td>就算模型完美也會先掉一些 IoU（軟標籤後已大幅縮小）</td><td>若時間夠，試 <code>--size 1536 --bs 2</code>（算力 2.25 倍，上限 0.9985）</td></tr>
+  <tr><td>模型把相鄰暗絲連成一條（多對一）</td><td>兩條都變 FN，再加一個 FP</td><td>先在驗證集量「一個預測蓋到多個答案」的比例，再決定是否做分水嶺／脊線分割</td></tr>
+  <tr><td>沒有訓練中斷續跑</td><td>Kaggle session 斷掉要從頭（約 2 小時）</td><td>用 Save &amp; Run All（Commit）在背景跑；全程遠低於 9 小時上限</td></tr>
+  <tr><td>Kaggle 帳號沒做手機驗證</td><td>不能開 GPU 也不能開 Internet，notebook 第一格就會失敗</td><td>先到 Settings 完成 Phone Verification</td></tr>
+  <tr><td>單一模型、無集成</td><td>分數有上升空間</td><td>基準先交出去拿到真實分數，再決定投入</td></tr>
+  <tr><td>影像沒有任何預測</td><td>該圖所有答案都是 FN；每張訓練圖都至少有 1 條暗絲</td><td>train.py 會印出空影像清單；若不為 0 可考慮用較低門檻保留最大元件</td></tr>
+</table></div>
+
+<h2 id="files"><span class="num">09</span>檔案地圖</h2>
+<div class="tablewrap"><table>
+  <tr><th>路徑</th><th>內容</th></tr>
+  <tr><td><code>filament/data.py</code></td><td>讀 COCO 標註、光柵化多邊形、以日期分組切分、路徑常數</td></tr>
+  <tr><td><code>filament/dataset.py</code></td><td>PyTorch 資料集：每檔一筆、軟標籤、增強、正規化</td></tr>
+  <tr><td><code>filament/model.py</code></td><td>U-Net 建構、BCE+Dice 損失、權重存取（fp16＋JSON）</td></tr>
+  <tr><td><code>filament/inference.py</code></td><td>縮圖推論、8 向 TTA、三次插值放大</td></tr>
+  <tr><td><code>filament/postprocess.py</code></td><td>機率圖 → 標籤圖 → 實例；<code>PostprocessParams</code>、<code>DEFAULT_GRID</code></td></tr>
+  <tr><td><code>filament/metric.py</code></td><td>PQ（參考版與快速標籤圖版），已與主辦方對照</td></tr>
+  <tr><td><code>filament/rle.py</code></td><td>COCO RLE 編碼／解碼</td></tr>
+  <tr><td><code>filament/submission.py</code></td><td>寫 submission.csv 並用 pandas 讀回驗證</td></tr>
+  <tr><td><code>train.py</code></td><td>訓練 → 調參 → 提交；<code>--smoke</code>、<code>--predict-only</code></td></tr>
+  <tr><td><code>build_notebook.py</code> → <code>kaggle_baseline.ipynb</code></td><td>打包成 Kaggle notebook（19 cell）</td></tr>
+  <tr><td><code>tests/test_core.py</code></td><td>pytest 風格測試，無資料也能跑合成測試</td></tr>
+  <tr><td><code>scripts/</code></td><td><code>visualize.py</code>（視覺化）、<code>annotator_agreement.py</code>（0.352）、<code>measure_filaments.py</code>（寬度、面積、神諭上限）</td></tr>
+  <tr><td><code>README.md</code>、<code>requirements*.txt</code>、<code>LICENSE</code>、<code>.gitignore</code>、<code>pyproject.toml</code></td><td>repo 交付物（英文）</td></tr>
+  <tr><td><code>viz/</code></td><td>4 張資料視覺化圖</td></tr>
+  <tr><td><code>比賽重點_Kaggle官方.md</code>、<code>kaggle_pages/</code></td><td>官方頁面整理與原文</td></tr>
+  <tr><td><code>對話紀錄.md</code></td><td>每一輪做了什麼</td></tr>
+  <tr><td><code>walkthrough.html</code></td><td>本頁</td></tr>
+  <tr><td><code>data/</code>（不進 repo）</td><td>比賽資料，CC BY-NC 4.0，不可再散布</td></tr>
+</table></div>
+
+<h2 id="next"><span class="num">10</span>下一步：把 notebook 丟上 Kaggle 跑一次</h2>
+<p>這一步只有你能做（要登入你的帳號）。全程約 2 小時，大部分時間是等待。標示【不確定】的地方是 Kaggle 介面可能略有不同，請以畫面上最接近的選項為準。</p>
+<h3>事前準備（只做一次）</h3>
+<ol>
+  <li>登入 Kaggle，到比賽頁 <a href="https://www.kaggle.com/competitions/filament-segmentation-2026">filament-segmentation-2026</a>，確認已 Join Competition 並接受規則。</li>
+  <li><b>手機驗證</b>：右上頭像 → Settings → Phone Verification → 輸入手機收簡訊。沒做這步就不能開 GPU 和 Internet。</li>
+</ol>
+<h3>建立 notebook</h3>
+<ol start="3">
+  <li>比賽頁上方 <b>Code</b> 分頁 → <b>New Notebook</b>。</li>
+  <li>左上 <b>File → Import Notebook</b> → Upload → 選 <code>C:\Users\machen\Desktop\SegmenThreads\kaggle_baseline.ipynb</code>。【不確定：有些版本直接彈出上傳框】</li>
+  <li>右側 <b>Input</b> 應已掛好 <code>filament-segmentation-2026</code>；若沒有，<b>+ Add Input</b> → Competitions 分頁 → 找這個比賽按 +。程式會自己找資料夾，不用改路徑。</li>
+</ol>
+<h3>設定</h3>
+<ol start="6">
+  <li>右側 <b>Settings → Accelerator</b>：選 <b>GPU T4 x2</b> 或 <b>GPU P100</b>（程式只用一張卡，兩者都可）。</li>
+  <li><b>Internet</b>：切到 <b>On</b>（為了 pip install 和下載 ImageNet 預訓練權重）。</li>
+  <li>第一個程式 cell 的 <code>MODE = 'train'</code> 保持不動。</li>
+</ol>
+<h3>執行（建議方式 B）</h3>
+<ul>
+  <li><b>A. Run All</b>：互動執行，可即時看輸出；但關掉瀏覽器一段時間後 session 可能被停掉，輸出檔會消失。適合先跑前 3 格確認 pip 成功、看得到 GPU 名稱。</li>
+  <li><b>B. Save Version → Save &amp; Run All (Commit)</b>：Kaggle 在背景從頭跑整本，<b>可以關瀏覽器</b>，跑完輸出永久留在該版本。右下／左下的 <b>View Active Events</b> 可看進度。</li>
+</ul>
+<div class="note warn"><b>看起來卡住其實正常</b>訓練開始後前 3～6 分鐘沒有輸出，是在快取資料。之後每個 epoch 印一行 <code>{'epoch': 1, 'loss': ...}</code>，每 5 個 epoch 多印 PQ。若第一格出現紅字，99% 是 Internet 沒開或沒手機驗證。</div>
+<h3>判斷成功</h3>
+<ul>
+  <li>最後幾格會印：<code>rows=N  images with &gt;=1 filament=180/180 (empty=0)</code>、環境版本、選到的後處理參數、驗證 PQ、訓練紀錄表、網格前 10 名。</li>
+  <li>成功的樣子：180 張都有預測、驗證 PQ 明顯大於 0（基準模型 0.3～0.5 都合理，標註員互比是 0.35）。</li>
+</ul>
+<h3>下載與提交</h3>
+<ol start="9">
+  <li>notebook 頁 → <b>Output</b> 分頁 → <code>outputs/</code> → 下載 <code>submission.csv</code>。<b>同時下載 <code>best.pt</code>、<code>best.pt.json</code>、<code>postprocess.json</code>、<code>report.json</code>、<code>environment.json</code></b>，放到專案的 <code>weights/</code> 資料夾，這是最終交件要用的。</li>
+  <li>比賽頁 → <b>Submit Prediction</b> → 拖入 submission.csv → 填一句描述（例如 <code>unet-r34 1024 soft e40</code>）→ Submit。幾分鐘後在 My Submissions 看到 Public Score。</li>
+  <li>每天最多 5 次。截止前到 My Submissions 勾選最多 2 個作為最終成績。</li>
+</ol>
+<p>跑完後把 report.json 和 environment.json 給我：我會把真實的驗證 PQ、訓練曲線、Kaggle 的套件版本填進 README 和 requirements.txt，並和排行榜分數對照。</p>
+
+<h2 id="deliver"><span class="num">11</span>11/15 前要交的東西</h2>
+<div class="tablewrap"><table>
+  <tr><th>項目</th><th>狀態</th><th>說明</th></tr>
+  <tr><td>Kaggle 提交（submission.csv）</td><td><span class="pill warn">待跑</span></td><td>第 10 節</td></tr>
+  <tr><td>公開 Git repo</td><td><span class="pill warn">待建</span></td><td>本機還不是 git repo。.gitignore 已排除 data/ 與 outputs/。需要你決定 GitHub 帳號與 repo 名稱，我可以代跑 git init、commit，push 需要你的登入。</td></tr>
+  <tr><td>requirements.txt（版本固定）</td><td><span class="pill info">草稿</span></td><td>目前是本機已知可用版本；Kaggle 跑完後用 environment.json 的版本取代。</td></tr>
+  <tr><td>能跑完整流程的 notebook</td><td><span class="pill ok">完成</span></td><td>kaggle_baseline.ipynb，MODE=train / predict。</td></tr>
+  <tr><td>模型權重在 repo 中、不重訓可重現</td><td><span class="pill warn">待跑</span></td><td>train.py 已輸出 fp16 權重（約 49 MB）＋ postprocess.json；跑完放進 weights/ 並用 <code>--predict-only</code> 驗證一次。</td></tr>
+  <tr><td>4 頁技術報告（PDF，官方 Overleaf 模板）</td><td><span class="pill bad">未開始</span></td><td>內容來源：本頁第 3～5 節與 scripts 的量測數字。建議拿到真實分數後再寫。</td></tr>
+  <tr><td>Google 表單送出</td><td><span class="pill bad">未開始</span></td><td>連結在官方 Overview 頁；11/15 23:59 CDT 前。</td></tr>
+  <tr><td>LICENSE（MIT）</td><td><span class="pill ok">完成</span></td><td>規則要求 OSI 授權且不得限制商業使用；資料本身是 CC BY-NC 4.0，不放進 repo。若你偏好 Apache-2.0 告訴我。</td></tr>
+</table></div>
+
+<h2 id="history"><span class="num">12</span>12 輪經過（2026-11-04 一天內）</h2>
+<div class="timeline">
+  <div class="t"><div class="d">第 1～2 輪</div>弄懂比賽是什麼；用 Playwright 抓官方三頁原文，修正第一版的兩個錯誤（截止日、指標）。</div>
+  <div class="t"><div class="d">第 3～7 輪</div>報名、下載資料（888 個檔案、751 MB）、建立對話紀錄、統計資料概況。</div>
+  <div class="t"><div class="d">第 8 輪</div>確認本機沒有 GPU，決定在 Kaggle 訓練；畫出資料視覺化，看清暗絲長什麼樣。</div>
+  <div class="t"><div class="d">第 9 輪</div>量測暗絲寬度決定 1024 解析度；寫完整個 filament 模組、train.py、測試；量出標註員互比 PQ 0.352；抓到 CSV 反斜線 bug。</div>
+  <div class="t"><div class="d">第 10 輪</div>自評；重新實測數字；抓到 PQ 效能 bug（620 ms → 20 ms）；量出 1024 二值化的 IoU 損失；第一版 walkthrough。</div>
+  <div class="t"><div class="d">第 11～12 輪</div>五位 agent 平行審查（本頁第 5 節），整合修正，補齊交付物，重寫本頁。</div>
+</div>
+
+<h2 id="gloss"><span class="num">13</span>名詞小辭典</h2>
+<dl class="gloss">
+  <dt>暗絲（filament）</dt><dd>太陽盤面上細長的深色條紋，是比較冷的物質被磁場撐在高處，從上面看就像一條黑線。</dd>
+  <dt>實例分割（instance segmentation）</dt><dd>不只標出「哪裡是暗絲」，還要分清楚「這是第 1 條、那是第 2 條」。像數一盤裡有幾根麵條，而不是量有多少麵。</dd>
+  <dt>IoU</dt><dd>交集除以聯集。兩個圈圈重疊的面積 ÷ 兩個圈圈合起來的面積。完全重疊是 1，完全不碰是 0。</dd>
+  <dt>PQ</dt><dd>比賽的分數。把配對成功的 IoU 加起來，除以（成功數 ＋ 一半誤報 ＋ 一半漏掉）。同時懲罰畫得不準、畫多了、畫少了。</dd>
+  <dt>U-Net</dt><dd>一種做影像分割的神經網路，形狀像 U：左邊一路縮小抓大局，右邊一路放大畫細節，左右同層之間有捷徑把細節接回去。</dd>
+  <dt>ResNet34 / ImageNet 預訓練</dt><dd>U-Net 左半邊用的「眼睛」。它已經在一百萬張日常照片上學過辨認邊緣、紋理，我們只是教它把這些能力用在太陽上。</dd>
+  <dt>epoch</dt><dd>把所有訓練影像完整看過一遍。我們看 40 遍。</dd>
+  <dt>batch</dt><dd>一次同時餵給 GPU 幾張圖。我們是 4 張。</dd>
+  <dt>軟標籤（soft target）</dt><dd>答案不是只有 0 或 1，而是 0.3、0.5 這樣的「有幾成是暗絲」。來源有兩個：縮圖時一個像素涵蓋原本幾個像素的比例，以及幾位標註員中有幾位同意。</dd>
+  <dt>BCE、Dice</dt><dd>兩種「答錯多少」的算法。BCE 逐像素算；Dice 看整體重疊。暗絲只佔 0.37%，只用 BCE 模型會學到「全部猜不是」就有 99.6% 正確，所以要加 Dice。</dd>
+  <dt>TTA（測試時增強）</dt><dd>把同一張圖轉幾個角度、翻幾次都預測一遍，再平均。多看幾眼比較穩。</dd>
+  <dt>插值（線性／三次）</dt><dd>把小圖放大時怎麼補中間的像素。線性是直線連接，三次是平滑曲線，對「軟」的機率圖更準。</dd>
+  <dt>連通元件</dt><dd>彼此相連的一群像素。二值化後每一團就當成一條暗絲。</dd>
+  <dt>神諭實驗（oracle）</dt><dd>假設模型完美，把正確答案本身丟進管線走一遍，看會掉多少分。掉的分數就是管線本身的上限損失，和模型無關。</dd>
+  <dt>RLE</dt><dd>遊程編碼。把一張 0/1 的遮罩寫成「連續 0 幾個、連續 1 幾個」的字串，比存整張圖小很多。主辦方要求的提交格式。</dd>
+  <dt>驗證集</dt><dd>從訓練資料裡留下一部分不給模型看，用來估計它在沒看過的圖上表現如何。我們留 15%，以拍攝日期分組。</dd>
+  <dt>fp16 / AMP</dt><dd>用「半精度」小數計算，速度快、記憶體省一半，GPU 訓練常用。權重存成 fp16 也只要一半大小。</dd>
+  <dt>smoke test（冒煙測試）</dt><dd>用很小的資料、很少的步數，把整條流程快速跑一遍，確認不會冒煙（當掉）。</dd>
+</dl>
+
+<footer>SegmenThreads · 本頁由 Claude 於 2026-11-04 根據程式碼與五份審查報告整理；所有數字可用 scripts/ 下的腳本重算。</footer>
+</main>
+</div>
+</body>
+</html>

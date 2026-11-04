@@ -1,0 +1,7 @@
+# Development extras on top of the runtime dependencies.
+-r requirements.txt
+pytest>=8.0          # tests/ (python -m tests.test_core or pytest)
+matplotlib>=3.8      # scripts/visualize.py overlays and report figures
+ruff>=0.5            # linting / formatting (config in pyproject.toml)
+playwright>=1.45     # only for fetch_kaggle.py, the page-scraping script that snapshots the
+                     # competition pages into kaggle_pages/; run `playwright install chromium` once

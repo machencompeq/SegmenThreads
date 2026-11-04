@@ -1,0 +1,17 @@
+# Runtime dependencies for the SegmenThreads filament-segmentation pipeline.
+#
+# These pins are the known-good versions of the local development environment (Python 3.14,
+# CPU-only torch). They are placeholders: after the final Kaggle GPU run, replace every pin
+# below with the versions recorded by train.py in outputs/environment.json, so that the
+# repository documents the exact environment that produced the submitted predictions.
+#
+# For GPU training install the CUDA build of torch/torchvision that matches your driver
+# (https://pytorch.org/get-started/locally/) at the same version numbers.
+torch==2.12.0
+torchvision==0.27.0
+numpy==2.4.6
+opencv-python==4.13.0
+pycocotools==2.0.11
+segmentation-models-pytorch==0.6.0
+timm==1.0.27
+pandas==3.0.3
