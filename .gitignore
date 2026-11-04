@@ -21,3 +21,4 @@ __pycache__/
 kaggle_pages/*.png
 
 # viz/ is intentionally tracked (example overlays)
+
