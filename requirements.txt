@@ -1,16 +1,19 @@
 # Runtime dependencies for the SegmenThreads filament-segmentation pipeline.
 #
-# These pins are the known-good versions of the local development environment (Python 3.14,
-# CPU-only torch). They are placeholders: after the final Kaggle GPU run, replace every pin
-# below with the versions recorded by train.py in outputs/environment.json, so that the
-# repository documents the exact environment that produced the submitted predictions.
+# These are the exact versions recorded by train.py in outputs/environment.json for the run that
+# produced the submitted predictions and weights/unet_r34_1024.pt (Python 3.12.10, Windows 11,
+# NVIDIA GeForce RTX 5060 Ti).
 #
-# For GPU training install the CUDA build of torch/torchvision that matches your driver
-# (https://pytorch.org/get-started/locally/) at the same version numbers.
-torch==2.12.0
-torchvision==0.27.0
+# torch / torchvision were the CUDA 12.8 builds (2.11.0+cu128 / 0.26.0+cu128). Install them first
+# from the PyTorch index so pip does not pick a CPU-only wheel, then install this file:
+#   pip install torch==2.11.0 torchvision==0.26.0 --index-url https://download.pytorch.org/whl/cu128
+#   pip install -r requirements.txt
+# RTX 50-series (Blackwell, sm_120) GPUs need the cu128 build; older CUDA builds fail with
+# "no kernel image is available for execution on the device".
+torch==2.11.0
+torchvision==0.26.0
 numpy==2.4.6
-opencv-python==4.13.0
+opencv-python==4.13.0.92
 pycocotools==2.0.11
 segmentation-models-pytorch==0.6.0
 timm==1.0.27

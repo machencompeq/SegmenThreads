@@ -1,0 +1,1 @@
+{"encoder": "resnet34", "size": 1024, "in_channels": 1, "classes": 1, "half": true}

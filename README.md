@@ -15,9 +15,15 @@ hours, and reproduces the submission from the saved weights without retraining.
 
 | Quantity | Value | Note |
 |---|---|---|
-| Public leaderboard PQ | **TBD** | to be filled in after the first GPU run on Kaggle |
-| Validation PQ (15 % of files, day-grouped, scored per annotator set) | **TBD** | to be filled in after the first GPU run; `train.py` prints it and stores it in `outputs/report.json` as `val_PQ` |
+| Public leaderboard PQ | **0.34** | first submission, 2026-11-14 (public split, about 50 % of the test images) |
+| Validation PQ (15 % of files, day-grouped, scored per annotator set) | **0.4336** | 95 % bootstrap CI over files 0.411 to 0.456; SQ 0.675, RQ 0.643 (TP 806, FP 520, FN 377); `thr` 0.5, `min_area` 300, `link_px` 6 |
 | Inter-annotator agreement PQ (reference) | 0.352 | one annotator scored against another on the same images; SQ 0.647, RQ 0.543, 60 files |
+
+The submitted run trained 40 epochs at 1024 x 1024 (batch 4) on an NVIDIA RTX 5060 Ti in about
+47 minutes including post-processing tuning and 8-fold TTA on the test set. The weights in
+`weights/` give the same validation PQ when the validation split is re-scored from them. The
+public leaderboard score is clearly below the local validation score; the gap has not been
+investigated yet.
 
 The inter-annotator number is a realistic ceiling for this metric rather than a target to beat:
 the ground truth itself only agrees with a second human at PQ 0.35. The host has stated in the
