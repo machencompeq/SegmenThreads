@@ -111,13 +111,17 @@ class Validator:
         return best
 
 
+def _seed_worker(w: int) -> None:
+    np.random.seed((torch.initial_seed() + w) % 2**32)
+
+
 def train_model(a, train_s, val: Validator, img_dir: Path, out: Path, device: str) -> tuple[torch.nn.Module, list]:
     t0 = time.time()
     ds = FilamentDataset(train_s, img_dir, a.size, augment=True)
     print(f"cached {len(ds)} train files in {time.time() - t0:.0f}s", flush=True)
     dl = DataLoader(ds, batch_size=a.bs, shuffle=True, num_workers=2 if device == "cuda" else 0,
                     drop_last=True, pin_memory=device == "cuda",
-                    worker_init_fn=lambda w: np.random.seed((torch.initial_seed() + w) % 2**32))
+                    worker_init_fn=_seed_worker)
 
     model = build_model(a.encoder, pretrained=not a.no_pretrained).to(device)
     opt = torch.optim.AdamW(model.parameters(), lr=a.lr, weight_decay=1e-4)
